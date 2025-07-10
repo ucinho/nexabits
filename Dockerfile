@@ -1,23 +1,39 @@
-# Use the official Node.js image.
-# https://hub.docker.com/_/node
-FROM node:20
-
-# Create and change to the app directory.
+# ────────────────────────────────
+#  Stage 1 : build everything
+# ────────────────────────────────
+FROM node:20 AS builder
 WORKDIR /usr/src/app
 
-# Copy application dependency manifests to the container image.
-# A wildcard is used to ensure both package.json AND package-lock.json are copied.
-# Copying this separately prevents re-running npm install on every code change.
+# 1️⃣  install all deps (incl. dev for React build)
 COPY package*.json ./
+RUN npm install
 
-# Install production dependencies.
-RUN npm install --only=production
-
-# Copy local code to the container image.
+# 2️⃣  copy source and build React
 COPY . .
+RUN npm run build          # ➜ creates /usr/src/app/build/
 
-# Run the web service on container startup.
-CMD [ "node", "server.js" ]
+# ────────────────────────────────
+#  Stage 2 : slim runtime image
+# ────────────────────────────────
+FROM node:20-slim
+WORKDIR /usr/src/app
 
-# Expose the port the app runs on
-EXPOSE 8080
+# — backend runtime deps only —
+COPY --from=builder /usr/src/app/node_modules ./node_modules
+COPY --from=builder /usr/src/app/package*.json ./
+COPY --from=builder /usr/src/app/server.mjs ./
+
+# — put built React where start.sh expects it —
+RUN mkdir -p frontend
+COPY --from=builder /usr/src/app/build ./frontend/build
+
+# — helper static server & script —
+RUN npm install -g serve
+COPY start.sh .
+RUN chmod +x start.sh
+
+# — expose both ports —
+EXPOSE 8080 3000
+
+# — launch backend + frontend (defined in start.sh) —
+CMD ["./start.sh"]
