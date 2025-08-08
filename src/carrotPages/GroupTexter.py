@@ -43,32 +43,23 @@ def filter_text(text):
 # Authenticate Telegram Client
 async def authenticate():
     session_file = "session_name.session"
-
-    # If session exists, ask whether to reuse or reset
-    if os.path.exists(session_file):
-        choice = input("A session already exists. Do you want to (R)euse it or (L)og in with a new phone number? [R/L]: ").strip().lower()
-        if choice == 'l':
-            os.remove(session_file)
-            print("Old session deleted. Proceeding with new login.")
-        else:
-            print("Reusing existing session...")
-
-    client = TelegramClient("session_name", API_ID, API_HASH)
-    await client.connect()
-
-    if not await client.is_user_authorized():
-        print("No valid session. Logging in...")
+    if not os.path.exists(session_file):
         phone_number = input("Enter your phone number: ")
-        try:
-            await client.send_code_request(phone_number)
-            code = input("Enter the code you received: ")
-            await client.sign_in(phone_number, code)
-        except Exception as e:
-            print(f"Authentication failed: {e}")
-            return None
-
+        client = TelegramClient("session_name", API_ID, API_HASH)
+        await client.connect()
+        
+        if not await client.is_user_authorized():
+            try:
+                await client.send_code_request(phone_number)
+                code = input("Enter the code you received: ")
+                await client.sign_in(phone_number, code)
+            except Exception as e:
+                print(f"Authentication failed: {e}")
+                return None
+    else:
+        client = TelegramClient("session_name", API_ID, API_HASH)
+    
     return client
-
 
 async def fetch_old_messages(client):
     sent_messages = load_sent_messages()
@@ -105,7 +96,7 @@ async def send_old_messages(messages):
                 await client.send_message(TARGET_GROUP, text)
 
             logger.info(f"Sent old message: {text[:30]}... from ({group})")
-            await asyncio.sleep(25200)  # 7 hours delay before sending the next message
+            await asyncio.sleep(300)  # 5-minute delay before sending the next message
 
         except Exception as e:
             logger.error(f"Failed to send message from ({group}): {e}")
@@ -142,4 +133,5 @@ async def main():
         await client.run_until_disconnected()
 
 print("Bot is running...")
-asyncio.run(main())
+loop = asyncio.get_event_loop()
+loop.run_until_complete(main())

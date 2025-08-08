@@ -13,7 +13,7 @@ const Navigation = () => {
 
   return (
     <nav
-      className={`fixed bottom-0 z-50 flex justify-around items-center font-inter bg-purple/40 shadow-md`}
+      className={`fixed bottom-0 z-50 flex justify-around items-center font-inter shadow-md`}
       style={{
         height: "80px", // Adjust the height to ensure it overlaps content below
         backgroundColor: theme === "dark" ? "#" : "rgba(241, 241, 241, 0.7)", // Add transparency
